@@ -8,6 +8,7 @@ import '../scrapers/posts.js';
 import '../scrapers/perfil.js';
 import '../scrapers/memberlist.js';
 import '../scrapers/user.js';
+import '../scrapers/forms.js';
 
 // modes (no-HTML del foro)
 import { renderCustom }                 from '../modes/custom.js';
