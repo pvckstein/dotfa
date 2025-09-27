@@ -59,3 +59,20 @@ export async function renderFetch(host, doT, user, mode /* 'fetch' | 'fetch-html
     host.innerHTML = '<div class="dot-error">No se pudo cargar.</div>';
   }
 }
+
+/**
+ * renderFetchData
+ * Usado por otros modos (ej. scrap="posts") para enriquecer datos
+ * sin necesidad de renderizar plantilla directamente.
+ */
+export async function renderFetchData({ from = 'fetch', url, path, into, selScr, selAny }) {
+  if (!url) return null;
+  const base = await loadJson({ from, url, selScr, selAny });
+  let data = byPath(base, path);
+  if (into) {
+    const pack = {};
+    pack[into] = data;
+    return pack;
+  }
+  return data ?? base;
+}
