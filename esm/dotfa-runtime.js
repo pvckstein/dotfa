@@ -29,8 +29,10 @@ export default async function init(){
   const doT = await loadDoT();
   if (!doT?.template){ console.warn('[dot] doT no disponible'); return; }
 
+  // Parcheo único de la sintaxis [[ ]] y [= ] etc.
   if (!doT.__dotPatched){ applyDoT(doT); doT.__dotPatched = true; }
 
+  // Scrapers disponibles
   const postsS   = getScraper('posts');
   const perfilS  = getScraper('perfil');
   const userS    = getScraper('user');
@@ -40,14 +42,19 @@ export default async function init(){
   const userPack = userS ? userS() : { user:null, lang:null, board:null };
   const { user, lang, board } = userPack;
 
-  // 1) Templating inline del postheader si contiene doT
+  // 1) Templating inline por post: [dot-inline], .postheader, .miniperfil
   posts.forEach(p=>{
-    const h = p.el.querySelector('.postheader'); if (!h) return;
-    const raw = h.innerHTML;
-    // Detecta delimitadores de doT: [[=, [[!, [[#, [[~, [[?, y también [=, [!, [# ...
-    if (!/(\[\[|\[)[=!#~?]/.test(raw)) return;
-    const fn = doT.template(raw);
-    h.innerHTML = fn({ by:p.by, ...userPack });
+    const INLINE_SELECTORS = '[dot-inline], .postheader, .miniperfil';
+    p.el.querySelectorAll(INLINE_SELECTORS).forEach(el=>{
+      if (el.dataset.dotCompiled) return; // evita recompilar
+      const raw = el.innerHTML;
+      // Detecta delimitadores doT: [[=, [[!, [[#, [[~, [[?, y también [=, [!, [# ...
+      if (!/(\[\[|\[)[=!#~?]/.test(raw)) return;
+      const fn = doT.template(raw);
+      // Contexto aplanado: it.username y también it.by.username
+      el.innerHTML = fn({ ...p.by, by:p.by, postEl:p.el, ...userPack });
+      el.dataset.dotCompiled = '1';
+    });
   });
 
   // 2) Render de hosts [dot]
@@ -83,10 +90,11 @@ export default async function init(){
         try{
           const data = await renderFetchData({ from, url, path, into, selScr, selAny });
           extra = data || {};
-        }catch(e){ console.warn('[dot] enrich posts fallo:', e); }
+        }catch(e){ console.warn('[dot] enrich posts fallo:', e);
+        }
       }
 
-      // 🔹 Filtro por 'only': "closest" (solo el .post contenedor) o id (#p5 / p5)
+      // Filtro por 'only': "closest" (solo el .post contenedor) o id (#p5 / p5)
       let list = posts;
       const only = (host.getAttribute('only')||'').trim();
       if (only === 'closest') {
@@ -100,7 +108,8 @@ export default async function init(){
       // Render eficiente con DocumentFragment
       const frag = document.createDocumentFragment();
       list.forEach(p => {
-        const html = fn({ by:p.by, user, lang, board, postEl:p.el, ...extra });
+        // Contexto aplanado (igual que inline) + extras
+        const html = fn({ ...p.by, by:p.by, user, lang, board, postEl:p.el, ...extra });
         const tmp  = document.createElement('div'); tmp.innerHTML = html;
         while (tmp.firstChild) frag.appendChild(tmp.firstChild);
       });
@@ -140,6 +149,7 @@ export default async function init(){
     console.warn('[dot] scrap no reconocido:', scrap);
   }));
 
+  // API mínima para debug / integración externa
   const readyObj = { doT, getScraper, util, parseCampoPerfil };
   window.dotReady = Promise.resolve(readyObj);
   window.__dotReadyResolve?.(readyObj);
