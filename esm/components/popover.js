@@ -32,10 +32,10 @@ const tpl = /*html*/`
   .backdrop[open]{display:block}
 </style>
 
-[[ 
+[[
   var pid = it.id || ('pop_'+Math.random().toString(36).slice(2));
-  var hasTrigger = !(it.trigger === 'false' || it.trigger === false);
-  var manual = (it.manual === '' || it.manual === true || it.manual === 'true');
+  var hasTrigger   = !(it.trigger === 'false' || it.trigger === false);
+  var manual       = (it.manual === '' || it.manual === true || it.manual === 'true');
   var withBackdrop = (it.backdrop === '' || it.backdrop === true || it.backdrop === 'true');
 ]]
 
@@ -45,7 +45,9 @@ const tpl = /*html*/`
   <button class="trigger"
           type="button"
           popovertarget="[[= pid ]]"
-          popovertargetaction="toggle">
+          popovertargetaction="toggle"
+          aria-haspopup="dialog"
+          aria-expanded="false">
     [[= it.label || 'Abrir' ]]
   </button>
 [[ } ]]
@@ -74,12 +76,39 @@ const tpl = /*html*/`
   const bd    = root.getElementById('bd-'+pid);
 
   // (opcional) vincular un disparador externo con atributo for="#selector|id"
+  // Nota: popovertarget NO atraviesa Shadow DOM. Usamos handler manual.
   const forSel = host.getAttribute('for');
-  if (forSel && pid){
-    const trg = (forSel.startsWith('#') ? document.querySelector(forSel) : document.getElementById(forSel));
-    if (trg){
-      trg.setAttribute('popovertarget', pid);
-      if (!trg.hasAttribute('popovertargetaction')) trg.setAttribute('popovertargetaction','toggle');
+  if (forSel && pid && panel) {
+    const trg = (forSel.startsWith('#')
+      ? document.querySelector(forSel)
+      : document.getElementById(forSel));
+
+    if (trg) {
+      const action = host.getAttribute('for-action') || 'toggle';
+
+      if (trg._xpopoverHandler) trg.removeEventListener('click', trg._xpopoverHandler);
+      trg._xpopoverHandler = (ev) => {
+        ev.preventDefault();
+        const isOpen = panel.matches(':popover-open');
+        try {
+          if (action === 'show')      panel.showPopover?.();
+          else if (action === 'hide') panel.hidePopover?.();
+          else {
+            if (isOpen) panel.hidePopover?.(); else panel.showPopover?.();
+          }
+        } catch (e) {}
+      };
+      trg.addEventListener('click', trg._xpopoverHandler);
+
+      // Accesibilidad básica
+      trg.setAttribute('aria-haspopup', 'dialog');
+      trg.setAttribute('aria-expanded', panel.matches(':popover-open') ? 'true' : 'false');
+
+      // Sincronizar aria-expanded del trigger externo
+      panel.addEventListener('toggle', () => {
+        const open = panel.matches(':popover-open');
+        trg.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
     }
   }
 
@@ -100,14 +129,19 @@ const tpl = /*html*/`
     }
   });
 
-  // Posicionamiento simple: center (por defecto), o data-pos="top|bottom|left|right"
+  // Cerrar con Escape
+  root.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && panel?.matches(':popover-open')) {
+      try { panel.hidePopover?.(); } catch(e){}
+    }
+  });
+
+  // Posicionamiento simple: center (por defecto), o pos="top|bottom|left|right"
   const pos = host.getAttribute('pos') || host.getAttribute('position');
   if (pos){
-    // Este posicionamiento es básico; para anclaje real, usar Anchor Positioning cuando esté disponible.
     const style = panel.style;
     style.position='fixed';
     const pad=16;
-    const w=520; const h=240;
     if (pos==='top'){ style.top = pad+'px'; style.left='50%'; style.transform='translateX(-50%)'; }
     else if (pos==='bottom'){ style.bottom = pad+'px'; style.left='50%'; style.transform='translateX(-50%)'; }
     else if (pos==='left'){ style.left = pad+'px'; style.top='50%'; style.transform='translateY(-50%)'; }
@@ -115,6 +149,15 @@ const tpl = /*html*/`
     else { /* center */
       style.top='50%'; style.left='50%'; style.transform='translate(-50%,-50%)';
     }
+  }
+
+  // Sincronizar aria-expanded del trigger interno (si existe)
+  const internalTrigger = root.querySelector('.trigger');
+  if (internalTrigger && panel) {
+    panel.addEventListener('toggle', () => {
+      const open = panel.matches(':popover-open');
+      internalTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
   }
 })();
 </script>
