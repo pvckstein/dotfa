@@ -22,8 +22,14 @@ function scrapePost(post){
 }
 
 function collectPosts(){
-  return [...document.querySelectorAll('.post')].map(p => ({ el:p, by:scrapePost(p) }));
+  // Solo posts mostrados: <div id="p123" class="post">…</div>
+  const postsEls = [...document.querySelectorAll('#posts .post[id^="p"]')]
+    // y que realmente tengan contenido de post
+    .filter(el => el.querySelector('.postbody .content'));
+
+  return postsEls.map(p => ({ el:p, by:scrapePost(p) }));
 }
+
 
 registerScraper('posts', collectPosts);
 export default collectPosts;
