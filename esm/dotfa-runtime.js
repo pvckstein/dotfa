@@ -13,6 +13,10 @@ import { renderCustom }                 from './modes/custom.js';
 import { renderFetch, renderFetchData } from './modes/fetch.js';
 import { renderPage }                   from './modes/page.js';
 
+// componentes
+
+import './components/popover.js';
+
 // --------- helpers internos ---------
 const tplCache = new Map(); // tplId -> compiled function
 
