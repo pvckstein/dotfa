@@ -1,13 +1,12 @@
-
-import { loadDoT, applyDoT, getScraper, util, parseCampoPerfil }
-  from './dotfa-core.js';                 // antes: ../dotfa-core.js
+// esm/dotfa-runtime.js
+import { loadDoT, applyDoT, getScraper, util, parseCampoPerfil } from './dotfa-core.js';
 
 // scrapers del foro (DOM / globals)
-import './scrapers/posts.js';             // antes: ../scrapers/posts.js
+import './scrapers/posts.js';
 import './scrapers/perfil.js';
 import './scrapers/memberlist.js';
 import './scrapers/user.js';
-import './scrapers/form.js';              // antes: ../scrapers/forms.js (NO existe)
+import './scrapers/form.js';
 
 // modes (no-HTML del foro)
 import { renderCustom }                 from './modes/custom.js';
@@ -44,7 +43,9 @@ export default async function init(){
   // 1) Templating inline del postheader si contiene doT
   posts.forEach(p=>{
     const h = p.el.querySelector('.postheader'); if (!h) return;
-    const raw = h.innerHTML; if (!/\[\[|\[\=|\[\!|\[\#/.test(raw)) return;
+    const raw = h.innerHTML;
+    // Detecta delimitadores de doT: [[=, [[!, [[#, [[~, [[?, y también [=, [!, [# ...
+    if (!/(\[\[|\[)[=!#~?]/.test(raw)) return;
     const fn = doT.template(raw);
     h.innerHTML = fn({ by:p.by, ...userPack });
   });
@@ -68,7 +69,9 @@ export default async function init(){
 
     const fn = compileTpl(doT, tplId, tpl.innerHTML);
 
+    // -------- posts (lista) --------
     if (scrap === 'posts'){
+      // enriquecimiento opcional con JSON común: from="fetch|fetch-html"
       let extra = {};
       const from = (host.getAttribute('from')||'').trim();
       if (from === 'fetch' || from === 'fetch-html'){
@@ -83,8 +86,20 @@ export default async function init(){
         }catch(e){ console.warn('[dot] enrich posts fallo:', e); }
       }
 
+      // 🔹 Filtro por 'only': "closest" (solo el .post contenedor) o id (#p5 / p5)
+      let list = posts;
+      const only = (host.getAttribute('only')||'').trim();
+      if (only === 'closest') {
+        const target = host.closest('.post');
+        if (target) list = posts.filter(p => p.el === target);
+      } else if (only) {
+        const id = only.startsWith('#') ? only.slice(1) : only;
+        list = posts.filter(p => p.el.id === id);
+      }
+
+      // Render eficiente con DocumentFragment
       const frag = document.createDocumentFragment();
-      posts.forEach(p => {
+      list.forEach(p => {
         const html = fn({ by:p.by, user, lang, board, postEl:p.el, ...extra });
         const tmp  = document.createElement('div'); tmp.innerHTML = html;
         while (tmp.firstChild) frag.appendChild(tmp.firstChild);
@@ -94,11 +109,13 @@ export default async function init(){
       return;
     }
 
+    // -------- perfil (único) --------
     if (scrap === 'perfil'){
       host.innerHTML = fn({ by:perfil.by, user, lang, board, perfilEl:perfil.el });
       return;
     }
 
+    // -------- memberlist (único) --------
     if (scrap === 'memberlist'){
       const mlS  = getScraper('memberlist');
       const data = mlS ? mlS() : { title:'', form_html:'', members:[], pagination_html:'' };
@@ -106,11 +123,13 @@ export default async function init(){
       return;
     }
 
+    // -------- user (único) --------
     if (scrap === 'user'){
       host.innerHTML = fn(userPack);
       return;
     }
 
+    // -------- fallback genérico --------
     const anyS = getScraper(scrap);
     if (anyS){
       const data = anyS() || {};
