@@ -119,10 +119,12 @@ export default async function init(){
     }
 
     // -------- perfil (único) --------
-    if (scrap === 'perfil'){
-      host.innerHTML = fn({ by:perfil.by, user, lang, board, perfilEl:perfil.el });
-      return;
-    }
+    // Después: forma plana + conserva by
+if (scrap === 'perfil'){
+  host.innerHTML = fn({ ...perfil.by, by:perfil.by, user, lang, board, perfilEl:perfil.el });
+  return;
+}
+
 
     // -------- memberlist (único) --------
     if (scrap === 'memberlist'){
