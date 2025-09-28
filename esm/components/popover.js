@@ -35,7 +35,7 @@ const tpl = /*html*/`
 [[ 
   var pid = it.id || ('pop_'+Math.random().toString(36).slice(2));
   var hasTrigger = !(it.trigger === 'false' || it.trigger === false);
-  var manual = (it.manual === '' || it.manual === true || it.manual === 'true'); // popover="manual" → no se cierra solo
+  var manual = (it.manual === '' || it.manual === true || it.manual === 'true');
   var withBackdrop = (it.backdrop === '' || it.backdrop === true || it.backdrop === 'true');
 ]]
 
