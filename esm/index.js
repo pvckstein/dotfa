@@ -14,13 +14,6 @@ import './scrapers/perfil.js';
 import './scrapers/posts.js';
 import './scrapers/user.js';
 
-// Components
-import './components/card.js';
-import './components/colapsable.js';
-import './components/engine.js';
-import './components/popover.js';
-import './components/table.js';
-
 // Forms (¡ojo a la ruta!)
 import './components/forms/checkbox-bind.js';
 import './components/forms/checkbox.js';
